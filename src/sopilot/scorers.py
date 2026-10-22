@@ -194,3 +194,30 @@ class EnsembleScorer(Scorer):
         if self.temperature != 1.0:
             p = softmax(np.log(np.clip(p, 1e-12, 1)), self.temperature)
         return p
+
+
+class CriticalScorer:
+    """Binary critical vs non-critical: TF-IDF LR and embedding LR, each Platt-scaled, averaged, Platt-scaled again."""
+
+    def __init__(self, tf: TfidfScorer, emb: Embedder, ecoef, eint, cfg):
+        self.tf, self.emb, self.ecoef, self.eint, self.cfg = tf, emb, np.asarray(ecoef, float), np.asarray(eint, float), cfg
+
+    @staticmethod
+    def _sig(z):
+        return 1 / (1 + np.exp(-z))
+
+    def predict(self, texts):
+        mt = [model_text(t) for t in texts]
+        zt = self.tf.model.logits(mt)[:, 0]
+        ze = self.emb.embed(mt).astype(float) @ self.ecoef[0] + self.eint[0]
+        a, b = self.cfg["platt_tfidf"]
+        c, d = self.cfg["platt_embed"]
+        p = (self._sig(a * zt + b) + self._sig(c * ze + d)) / 2
+        e, f = self.cfg["platt_avg"]
+        return self._sig(e * np.log(p / (1 - p + 1e-12) + 1e-12) + f)
+
+    @classmethod
+    def load(cls, art: Path, embedder):
+        cfg = json.loads((art / "critical.json").read_text())
+        z = np.load(art / "critical_embed.npz")
+        return cls(TfidfScorer.load(art / "critical_tfidf"), embedder, z["coef"], z["intercept"], cfg)

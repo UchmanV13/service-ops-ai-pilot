@@ -5,7 +5,7 @@ template-grouped out-of-fold (OOF) predictions on dev: each fold's predictions
 are on phrasings the fold's model never saw, which mimics val and test. That
 leaves val untouched for the threshold guarantee.
 
-    python -m sopilot.train
+    python -m sopilot.train --pilot pilot2
 """
 from __future__ import annotations
 
@@ -19,14 +19,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupKFold
 from scipy.sparse import hstack
+from sklearn.metrics import average_precision_score
 
 from .metrics import aurc
 from .scorers import (Embedder, EmbedScorer, RulesScorer, TfidfScorer, model_text, softmax)
-from .taxonomy import INTENT_NAMES
+from .taxonomy import CRITICAL_INTENTS, INTENT_NAMES
 from .textvec import Block, TfidfLinear
 
 ROOT = Path(__file__).resolve().parents[2]
-ART = ROOT / "artifacts"
+PILOTS = json.loads((ROOT / "config" / "pilots.json").read_text())
 K = len(INTENT_NAMES)
 IDX = {n: i for i, n in enumerate(INTENT_NAMES)}
 
@@ -74,10 +75,31 @@ def nll(p, y):
     return float(-np.mean(np.log(np.clip(p[np.arange(len(y)), y], 1e-12, 1))))
 
 
-def main():
+def fit_binary_tfidf(texts, yb, C=8.0):
+    vw = TfidfVectorizer(analyzer="word", ngram_range=(1, 2), sublinear_tf=True, min_df=2)
+    vc = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True, min_df=2)
+    X = hstack([vw.fit_transform(texts), vc.fit_transform(texts)]).tocsr()
+    clf = LogisticRegression(C=C, max_iter=3000, class_weight="balanced").fit(X, yb)
+    blocks = [Block("word", (1, 2), {k: int(v) for k, v in vw.vocabulary_.items()}, vw.idf_),
+              Block("char_wb", (2, 5), {k: int(v) for k, v in vc.vocabulary_.items()}, vc.idf_)]
+    return TfidfLinear(blocks, clf.coef_, clf.intercept_, ["critical"])
+
+
+def fit_platt(z, yb):
+    lr = LogisticRegression(C=1e6, max_iter=1000).fit(np.asarray(z).reshape(-1, 1), yb)
+    return float(lr.coef_[0, 0]), float(lr.intercept_[0])
+
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+
+def main(pilot="pilot2"):
     t0 = time.time()
-    ART.mkdir(exist_ok=True)
-    dev = load("dev")
+    cfg = PILOTS[pilot]
+    ART = ROOT / "artifacts" / pilot
+    ART.mkdir(parents=True, exist_ok=True)
+    dev = [r for s in cfg["train"] for r in load(s)]
     texts = [model_text(r["text"]) for r in dev]
     y = np.array([IDX[r["gold"]["intent"]] for r in dev])
     groups = np.array([r["template_family"] for r in dev])
@@ -86,7 +108,8 @@ def main():
     embedder = Embedder.from_wordllama()
     Xe = embedder.embed(texts).astype(np.float64)
 
-    report = {"n_dev": len(dev), "cv": "GroupKFold(5) by template family", "tfidf": {}, "embed": {}}
+    report = {"pilot": pilot, "train_splits": cfg["train"], "n_train": len(dev), "cv": "GroupKFold(5) by template family",
+              "tfidf": {}, "embed": {}}
 
     # --- choose C by grouped OOF log loss, keep OOF logits for calibration
     best = {}
@@ -130,20 +153,53 @@ def main():
     report["scorer_choice"] = {"by": "lowest AURC on grouped OOF dev predictions", "results": choice, "chosen": chosen}
     print(json.dumps(report["scorer_choice"], indent=1))
 
-    # --- final fits on all of dev
+    # --- dedicated critical classifier (binary), grouped OOF + Platt scaling
+    yb = np.array([int(r["gold"]["critical"]) for r in dev])
+    oof_t = np.zeros(len(dev))
+    oof_e = np.zeros(len(dev))
+    for tr, te in folds:
+        mt = fit_binary_tfidf([texts[i] for i in tr], yb[tr])
+        oof_t[te] = mt.logits([texts[i] for i in te])[:, 0]
+        ce = LogisticRegression(C=30.0, max_iter=5000, class_weight="balanced").fit(Xe[tr], yb[tr])
+        oof_e[te] = Xe[te] @ ce.coef_[0] + ce.intercept_[0]
+    pt_a, pt_b = fit_platt(oof_t, yb)
+    pe_a, pe_b = fit_platt(oof_e, yb)
+    p_bin_raw = (sigmoid(pt_a * oof_t + pt_b) + sigmoid(pe_a * oof_e + pe_b)) / 2
+    pb_a, pb_b = fit_platt(np.log(p_bin_raw / (1 - p_bin_raw + 1e-12) + 1e-12), yb)
+    p_bin = sigmoid(pb_a * np.log(p_bin_raw / (1 - p_bin_raw + 1e-12) + 1e-12) + pb_b)
+    crit_idx = [INTENT_NAMES.index(c) for c in CRITICAL_INTENTS]
+    p_sum = p_ens[:, crit_idx].sum(1)
+    signals = {"intent_sum": p_sum, "binary": p_bin, "average": (p_sum + p_bin) / 2}
+    ap = {k: round(float(average_precision_score(yb, v)), 4) for k, v in signals.items()}
+    chosen_crit = max(ap, key=ap.get)
+    report["critical_signal_choice"] = {"by": "average precision on grouped OOF train predictions", "ap": ap, "chosen": chosen_crit}
+    print("critical signal:", report["critical_signal_choice"])
+    mt = fit_binary_tfidf(texts, yb)
+    ce = LogisticRegression(C=30.0, max_iter=5000, class_weight="balanced").fit(Xe, yb)
+    crit_tf = TfidfScorer(mt, 1.0)
+    crit_tf.save(ART / "critical_tfidf")
+    np.savez_compressed(ART / "critical_embed.npz", coef=ce.coef_.astype(np.float32), intercept=ce.intercept_)
+    (ART / "critical.json").write_text(json.dumps({"platt_tfidf": [pt_a, pt_b], "platt_embed": [pe_a, pe_b],
+                                                   "platt_avg": [pb_a, pb_b], "chosen_signal": chosen_crit, "ap_oof": ap}))
+
+    # --- final fits on all of the training data
     tf = TfidfScorer(fit_tfidf(texts, y, best["tfidf"][1]), best["tfidf"][2])
     tf.save(ART / "tfidf")
     coef, icpt = fit_embed(Xe, y, best["embed"][1])
     np.savez_compressed(ART / "embed_lr.npz", coef=coef.astype(np.float32), intercept=icpt, temperature=best["embed"][2])
-    meta = {"chosen_scorer": chosen, "T_ensemble": T_ens, "T_rules": rules.temperature,
+    meta = {"pilot": pilot, "chosen_scorer": chosen, "T_ensemble": T_ens, "T_rules": rules.temperature,
             "C_tfidf": best["tfidf"][1], "C_embed": best["embed"][1], "intents": list(INTENT_NAMES),
-            "trained_on": "dev", "n_train": len(dev), "seconds": round(time.time() - t0, 1)}
+            "trained_on": "+".join(cfg["train"]), "n_train": len(dev), "critical_signal": chosen_crit,
+            "seconds": round(time.time() - t0, 1)}
     (ART / "meta.json").write_text(json.dumps(meta, indent=1))
     np.savez_compressed(ART / "oof_dev.npz", tfidf=p_t, embed=p_e, ensemble=p_ens, rules=p_r, y=y)
-    (ROOT / "outputs").mkdir(exist_ok=True)
-    (ROOT / "outputs" / "train_report.json").write_text(json.dumps(report, indent=1))
+    (ROOT / "outputs" / pilot).mkdir(parents=True, exist_ok=True)
+    (ROOT / "outputs" / pilot / "train_report.json").write_text(json.dumps(report, indent=1))
     print("done", meta)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap_ = argparse.ArgumentParser()
+    ap_.add_argument("--pilot", default="pilot2")
+    main(ap_.parse_args().pilot)

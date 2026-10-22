@@ -2,7 +2,7 @@
 thresholds frozen in outputs/thresholds.json, plus ablations, robustness,
 calibration, retrieval, learning curve and economics.
 
-    python scripts/run_eval.py
+    python scripts/run_eval.py --pilot pilot2
 """
 import json
 import random
@@ -27,15 +27,13 @@ from sopilot.scorers import Embedder, model_text, softmax  # noqa: E402
 from sopilot.taxonomy import AUTOMATED_ACTIONS, INTENT_NAMES, INTENTS  # noqa: E402
 from sopilot.templates_ml import INJECTIONS  # noqa: E402
 
-OUT = ROOT / "outputs"
 ARMS = ("rules", "tfidf", "embed", "ensemble")
-SPLITS = ("test", "shift", "handwritten")
+PILOTS = json.loads((ROOT / "config" / "pilots.json").read_text())
 
 
 def params_for(th, arm):
     p = th["arms"][arm]["params"]
-    return Params(**{k: p[k] for k in ("auto_threshold", "critical_threshold", "multi_threshold", "non_english",
-                                       "require_evidence", "version")})
+    return Params(**{k: v for k, v in p.items() if k in Params.__dataclass_fields__})
 
 
 def go_no_go(test, shift, econ_base, econ_pess):
@@ -61,40 +59,48 @@ def go_no_go(test, shift, econ_base, econ_pess):
     return g
 
 
-def main():
+def main(pilot):
     t_start = time.time()
+    pc = PILOTS[pilot]
+    OUT = ROOT / "outputs" / pilot
+    ART = ROOT / "artifacts" / pilot
+    SPLITS = (pc["holdout"], *pc["extra"])
+    HOLD, SHIFT, PARA = pc["holdout"], pc["extra"][0], pc["paraphrase"]
     th = json.loads((OUT / "thresholds.json").read_text())
     cfg = econ.load_config()
     emb = Embedder.from_wordllama()
-    data = {s: load(s) for s in SPLITS + ("paraphrase", "dev", "val")}
-    R = {"generated_at": time.strftime("%Y-%m-%d %H:%M"), "data_note": "Synthetic tickets for a fictional vendor; labels from the labeling guide.",
+    data = {s: load(s) for s in SPLITS + (PARA, pc["calibrate"], *pc["train"])}
+    data["__train__"] = [r for s in pc["train"] for r in load(s)]
+    R = {"pilot": pilot, "splits": {"train": pc["train"], "calibrate": pc["calibrate"], "holdout": HOLD, "shift": SHIFT,
+                                     "handwritten": "handwritten", "paraphrase": PARA},
+         "generated_at": time.strftime("%Y-%m-%d %H:%M"), "data_note": "Synthetic tickets for a fictional vendor; labels from the labeling guide.",
          "thresholds": {a: th["arms"][a]["params"] for a in ARMS}, "arms": {}}
     pipes, evs = {}, {}
 
     # ------------------------------------------------------------ all arms, all splits
     for arm in ARMS:
-        pipes[arm] = Pipeline.load(scorer_name=arm, embedder=emb)
+        pipes[arm] = Pipeline.load(art=ART, scorer_name=arm, embedder=emb)
         prm = params_for(th, arm)
         R["arms"][arm] = {}
-        for s in SPLITS + ("paraphrase",):
+        for s in SPLITS + (PARA,):
             ev = pipes[arm].analyze([r["text"] for r in data[s]])
             evs[(arm, s)] = ev
             decs, outs = run_policy(data[s], ev, prm)
-            R["arms"][arm][s] = summarize(outs, [e["latency_ms"] for e in ev], bootstrap=(s == "test"))
+            R["arms"][arm][s] = summarize(outs, [e["latency_ms"] for e in ev], bootstrap=(s == HOLD))
             if arm == "ensemble":
                 R.setdefault("ensemble_outs", {})[s] = outs
-        print(arm, "test coverage", round(R["arms"][arm]["test"]["automated_coverage"]["rate"], 3),
-              "auto acc", R["arms"][arm]["test"]["automated_accuracy"]["rate"],
-              "crit", round(R["arms"][arm]["test"]["critical_recall"]["rate"], 3))
+        print(arm, "holdout coverage", round(R["arms"][arm][HOLD]["automated_coverage"]["rate"], 3),
+              "auto acc", R["arms"][arm][HOLD]["automated_accuracy"]["rate"],
+              "crit", round(R["arms"][arm][HOLD]["critical_recall"]["rate"], 3))
 
     # all-human baseline
-    base_outs = [outcome(r, {"action": "HUMAN_REVIEW", "intent": "none", "queue": "none"}) for r in data["test"]]
-    R["all_human_baseline"] = {"test": summarize(base_outs, bootstrap=False)}
+    base_outs = [outcome(r, {"action": "HUMAN_REVIEW", "intent": "none", "queue": "none"}) for r in data[HOLD]]
+    R["all_human_baseline"] = {HOLD: summarize(base_outs, bootstrap=False)}
 
     prod = "ensemble"
     P = params_for(th, prod)
-    outs_test = R["ensemble_outs"]["test"]
-    outs_shift = R["ensemble_outs"]["shift"]
+    outs_test = R["ensemble_outs"][HOLD]
+    outs_shift = R["ensemble_outs"][SHIFT]
 
     # ------------------------------------------------------------ economics + go/no-go
     e_base = econ.net_value(outs_test, cfg["base"])
@@ -105,7 +111,7 @@ def main():
         "break_even_missed_critical_usd": econ.break_even_missed_critical(outs_test, cfg["base"]),
         "assumptions": cfg,
     }
-    R["go_no_go"] = go_no_go(R["arms"][prod]["test"], R["arms"][prod]["shift"], e_base, e_pess)
+    R["go_no_go"] = go_no_go(R["arms"][prod][HOLD], R["arms"][prod][SHIFT], e_base, e_pess)
     print("GO/NO-GO:", R["go_no_go"]["decision"], R["go_no_go"]["failed"])
 
     # ------------------------------------------------------------ per-intent, language, narrow scope
@@ -114,9 +120,9 @@ def main():
 
     # ------------------------------------------------------------ risk-coverage / calibration (intent level)
     R["risk_coverage"], R["calibration"] = {}, {}
-    y = np.array([INTENT_NAMES.index(r["gold"]["intent"]) for r in data["test"]])
+    y = np.array([INTENT_NAMES.index(r["gold"]["intent"]) for r in data[HOLD]])
     for arm in ARMS:
-        P_ = np.array([e["probs"] for e in evs[(arm, "test")]])
+        P_ = np.array([e["probs"] for e in evs[(arm, HOLD)]])
         err = (P_.argmax(1) != y).astype(float)
         R["risk_coverage"][arm] = {"aurc": aurc(P_.max(1), err), "intent_accuracy": float(1 - err.mean()),
                                    "curve": risk_coverage(P_.max(1), err, 40)}
@@ -124,14 +130,14 @@ def main():
         R["calibration"][arm] = {"ece": e_, "reliability": tab}
     # uncalibrated ensemble (T = 1 everywhere) for comparison
     sc = pipes["ensemble"].scorer
-    mt = [model_text(r["text"]) for r in data["test"]]
+    mt = [model_text(r["text"]) for r in data[HOLD]]
     raw = np.mean([softmax(m.logits(mt), 1.0) for m in sc.members], axis=0)
     e_raw, tab_raw = ece(raw.max(1), (raw.argmax(1) == y).astype(float))
     R["calibration"]["ensemble_uncalibrated"] = {"ece": e_raw, "reliability": tab_raw}
 
     # ------------------------------------------------------------ automation threshold sweep (dashboard slider)
     sweep = {}
-    for s in ("val", "test", "shift"):
+    for s in (pc["calibrate"], HOLD, SHIFT):
         ev = evs.get((prod, s)) or pipes[prod].analyze([r["text"] for r in data[s]])
         evs[(prod, s)] = ev
         pts = []
@@ -148,18 +154,18 @@ def main():
     # critical threshold sweep on test (recall vs precision vs workload)
     csw = []
     for tau in [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.7, 0.9, 1.01]:
-        _, o = run_policy(data["test"], evs[(prod, "test")], replace(P, critical_threshold=tau))
+        _, o = run_policy(data[HOLD], evs[(prod, HOLD)], replace(P, critical_threshold=tau))
         sm = summarize(o, bootstrap=False)
         csw.append({"tau": tau, "critical_recall": sm["critical_recall"]["rate"], "escalation_precision": sm["escalation_precision"]["rate"],
                     "escalated_share": sum(x["escalated"] for x in o) / len(o)})
-    R["critical_sweep_test"] = csw
+    R["critical_sweep_holdout"] = csw
 
     # ------------------------------------------------------------ ablations (test, production arm)
     ab = {}
-    ev = evs[(prod, "test")]
+    ev = evs[(prod, HOLD)]
 
     def run_variant(name, evs_mod, prm):
-        _, o = run_policy(data["test"], evs_mod, prm)
+        _, o = run_policy(data[HOLD], evs_mod, prm)
         sm = summarize(o, bootstrap=False)
         ab[name] = {k: sm[k]["rate"] for k in ("automated_coverage", "automated_accuracy", "inappropriate_automation",
                                                  "critical_recall", "escalation_precision", "routing_accuracy")}
@@ -173,7 +179,11 @@ def main():
     run_variant("no_evidence_check", ev, replace(P, require_evidence=False))
     run_variant("non_english_to_humans", ev, replace(P, non_english="review"))
     run_variant("threshold_0.80_no_guarantee", ev, replace(P, auto_threshold=0.80))
-    R["ablations_test"] = ab
+    if pilot != "pilot1":
+        run_variant("pilot1_multi_detector", ev, replace(P, multi_mode="v1", multi_threshold=0.7))
+        run_variant("no_sibling_guard", ev, replace(P, sibling_guard=None))
+        run_variant("critical_signal_intent_sum", ev, replace(P, critical_signal="intent_sum"))
+    R["ablations_holdout"] = ab
 
     # ------------------------------------------------------------ component diagnostics
     def guard_stats(rows):
@@ -194,14 +204,14 @@ def main():
     def multi_stats(rows, ev):
         pos = [(r, e) for r, e in zip(rows, ev) if r["flags"]["multi_issue"]]
         neg = [(r, e) for r, e in zip(rows, ev) if not r["flags"]["multi_issue"]]
-        tp = sum(bool(multi_request(e, P.multi_threshold)) for r, e in pos)
-        fp = sum(bool(multi_request(e, P.multi_threshold)) for r, e in neg)
+        tp = sum(bool(multi_request(e, P.multi_threshold, P.multi_mode)) for r, e in pos)
+        fp = sum(bool(multi_request(e, P.multi_threshold, P.multi_mode)) for r, e in neg)
         return {"n_multi": len(pos), "detected": tp, "recall": tp / len(pos) if pos else None, "false_positives": fp,
                 "fp_rate": fp / len(neg) if neg else None}
 
     R["components"] = {s: {"hard_rules": guard_stats(data[s]), "injection": inj_stats(data[s]),
                            "multi_request": multi_stats(data[s], evs[(prod, s)])} for s in SPLITS}
-    R["components"]["dev_hard_rules_in_sample"] = guard_stats(data["dev"])
+    R["components"]["train_hard_rules_in_sample"] = guard_stats(data["__train__"])
     # language id
     from sopilot.extract import detect_language
     for s in SPLITS:
@@ -210,57 +220,57 @@ def main():
     # field extraction
     from sopilot.extract import extract_fields
     tot = ok = 0
-    for r in data["test"] + data["shift"]:
+    for r in data[HOLD] + data[SHIFT]:
         f = extract_fields(r["text"])
         gold = {k: (v.upper() if k == "service_tag" else ("ORD-" + v[-8:] if k == "order_number" else "CS-" + v[-7:])) for k, v in r["fields"].items()}
         tot += 1
         ok += f == gold
-    R["components"]["field_extraction_exact_match_test_shift"] = ok / tot
+    R["components"]["field_extraction_exact_match_holdout_shift"] = ok / tot
     # PII
-    pii_rows = [r for r in data["test"] if r["flags"]["pii"]]
+    pii_rows = [r for r in data[HOLD] if r["flags"]["pii"]]
     leaks = 0
     for r in pii_rows:
         red, _ = redact_pii(r["text"])
         leaks += ("@example.com" in red) or ("4111" in red)
-    R["components"]["pii_test"] = {"tickets_with_pii": len(pii_rows), "email_or_card_leaks_after_redaction": leaks}
+    R["components"]["pii_holdout"] = {"tickets_with_pii": len(pii_rows), "email_or_card_leaks_after_redaction": leaks}
 
     # retrieval
     arts = json.loads((ROOT / "data" / "kb" / "articles.json").read_text(encoding="utf-8"))
     rets = {"bm25": Retriever(arts), "hybrid": Retriever(arts, emb)}
     rr = {}
     for name, ret in rets.items():
-        rows = [r for r in data["test"] if r["gold"]["kb"] and r["language"] == "en"]
+        rows = [r for r in data[HOLD] if r["gold"]["kb"] and r["language"] == "en"]
         h1 = h3 = 0
         for r in rows:
             got = [x["id"] for x in ret.search(redact_pii(r["text"])[0], 3)]
             h1 += got[0] in r["gold"]["kb"]
             h3 += any(g in r["gold"]["kb"] for g in got)
         rr[name] = {"n": len(rows), "recall_at_1": h1 / len(rows), "recall_at_3": h3 / len(rows)}
-    R["retrieval_test_en"] = rr
+    R["retrieval_holdout_en"] = rr
 
     # ------------------------------------------------------------ robustness (test, production arm)
     rng = random.Random(11)
     rob = {}
     variants = {
-        "typos_6pct": [typo(r["text"], rng, 0.06) for r in data["test"]],
-        "lowercase": [r["text"].lower() for r in data["test"]],
+        "typos_6pct": [typo(r["text"], rng, 0.06, protect_ids=True) for r in data[HOLD]],
+        "lowercase": [r["text"].lower() for r in data[HOLD]],
     }
     for name, texts in variants.items():
         evv = pipes[prod].analyze(texts)
-        _, o = run_policy(data["test"], evv, P)
+        _, o = run_policy(data[HOLD], evv, P)
         sm = summarize(o, bootstrap=False)
         rob[name] = {k: sm[k]["rate"] for k in ("automated_coverage", "automated_accuracy", "inappropriate_automation", "critical_recall")}
     # injection appended to tickets the system automated
-    decs, _ = run_policy(data["test"], evs[(prod, "test")], P)
-    auto_rows = [r for r, d in zip(data["test"], decs) if d["automated"]]
+    decs, _ = run_policy(data[HOLD], evs[(prod, HOLD)], P)
+    auto_rows = [r for r, d in zip(data[HOLD], decs) if d["automated"]]
     inj_texts = [r["text"] + "\n" + rng.choice(INJECTIONS) for r in auto_rows]
     evv = pipes[prod].analyze(inj_texts)
     still = sum(decide(e, P)["automated"] for e in evv)
     rob["injection_appended_to_automated_tickets"] = {"n": len(auto_rows), "still_automated": still}
     # paraphrase stability: same case, 6 different test phrasings
-    pev = evs[(prod, "paraphrase")]
+    pev = evs[(prod, PARA)]
     groups = {}
-    for r, e in zip(data["paraphrase"], pev):
+    for r, e in zip(data[PARA], pev):
         groups.setdefault(r["group"], []).append(decide(e, P))
     same_action = np.mean([len({d["action"] for d in g}) == 1 for g in groups.values()])
     same_intent = np.mean([len({d["intent"] for d in g}) == 1 for g in groups.values()])
@@ -268,13 +278,13 @@ def main():
     for g in groups.values():
         acts = [d["action"] for d in g]
         pair_agree += [acts[i] == acts[j] for i in range(len(acts)) for j in range(i + 1, len(acts))]
-    rob["paraphrase"] = {"groups": len(groups), "variants_per_group": 6, "all_same_action": float(same_action),
+    rob["paraphrase"] = {"groups": len(groups), "variants_per_group": len(next(iter(groups.values()))), "all_same_action": float(same_action),
                          "all_same_intent": float(same_intent), "pairwise_action_agreement": float(np.mean(pair_agree))}
-    R["robustness_test"] = rob
+    R["robustness_holdout"] = rob
 
     # ------------------------------------------------------------ single-ticket latency
     lat = []
-    for r in data["test"][:200]:
+    for r in data[HOLD][:200]:
         t0 = time.perf_counter()
         pipes[prod].triage(r["text"], P)
         lat.append((time.perf_counter() - t0) * 1000)
@@ -284,8 +294,8 @@ def main():
     # ------------------------------------------------------------ examples for the readout / dashboard
     ex = []
     pick = {"correct_auto": 3, "inappropriate": 3, "wrong_auto": 3, "missed_critical": 3, "false_escalation": 2}
-    decs_test, _ = run_policy(data["test"], evs[(prod, "test")], P)
-    for r, d, o in zip(data["test"], decs_test, outs_test):
+    decs_test, _ = run_policy(data[HOLD], evs[(prod, HOLD)], P)
+    for r, d, o in zip(data[HOLD], decs_test, outs_test):
         kind = ("correct_auto" if o["correct_auto"] else "inappropriate" if o["inappropriate"] else "wrong_auto" if o["wrong_auto"]
                 else "missed_critical" if (o["critical"] and not o["escalated"]) else "false_escalation" if (o["escalated"] and not o["critical"]) else None)
         if kind and pick.get(kind, 0) > 0:
@@ -293,13 +303,17 @@ def main():
             ex.append({"kind": kind, "id": r["id"], "text": redact_pii(r["text"])[0], "gold_intent": r["gold"]["intent"],
                        "gold_action": r["gold"]["action"], "pred_intent": d["intent"], "pred_action": d["action"],
                        "confidence": d["confidence"], "reasons": d["reasons"]})
-    R["examples_test"] = ex
+    R["examples_holdout"] = ex
+    R["per_intent_holdout"] = R.pop("per_intent_test")
 
     R.pop("ensemble_outs")
     R["seconds"] = round(time.time() - t_start, 1)
     (OUT / "results.json").write_text(json.dumps(R, indent=1, default=lambda x: float(x) if isinstance(x, (np.floating, np.integer)) else str(x)))
-    print("wrote outputs/results.json in", R["seconds"], "s")
+    print(f"wrote outputs/{pilot}/results.json in", R["seconds"], "s")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pilot", default="pilot2")
+    main(ap.parse_args().pilot)

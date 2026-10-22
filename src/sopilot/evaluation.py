@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from .metrics import binom_pvalue_risk_above, clopper_pearson, cluster_bootstrap, cp_lower, cp_upper
-from .pipeline import Params, decide
+from .pipeline import Params, critical_score, decide
 from .taxonomy import AUTOMATED_ACTIONS, HUMAN_ACTIONS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -90,14 +90,14 @@ def run_policy(rows, evs, params, retriever=None):
 
 
 # --------------------------------------------------------------------------- protocol
-def choose_critical_threshold(rows, evs, target_lower=0.95, grid=None):
+def choose_critical_threshold(rows, evs, target_lower=0.95, grid=None, signal="intent_sum"):
     """Largest tau_c whose one-sided 95% CP lower bound on critical recall is >= target."""
     grid = grid if grid is not None else np.round(np.arange(0.95, 0.0, -0.01), 2)
     crit = [(r, e) for r, e in zip(rows, evs) if r["gold"]["critical"]]
     trace = []
     best = None
     for tau in grid:
-        k = sum(1 for _, e in crit if e["guard_hits"] or e["p_critical"] >= tau)
+        k = sum(1 for _, e in crit if e["guard_hits"] or critical_score(e, signal) >= tau)
         lb = cp_lower(k, len(crit))
         trace.append({"tau": float(tau), "recall": k / len(crit), "lower95": lb})
         if lb >= target_lower:
