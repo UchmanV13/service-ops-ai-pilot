@@ -83,4 +83,6 @@ def cluster_bootstrap(values_by_cluster: dict, stat, B: int = 2000, seed: int = 
         rows = [r for i in pick for r in values_by_cluster[keys[i]]]
         stats.append(stat(rows))
     stats = np.array([s for s in stats if s == s])
+    if len(stats) == 0:
+        return (float("nan"), float("nan"))
     return (float(np.percentile(stats, 2.5)), float(np.percentile(stats, 97.5)))
