@@ -1,0 +1,8 @@
+data/tickets
+outputs/cache
+artifacts/pilot1
+artifacts/pilot2/oof_dev.npz
+web/node_modules
+web/dist-replay
+tests
+docs/figures

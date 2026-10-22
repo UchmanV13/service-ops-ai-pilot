@@ -1,0 +1,10 @@
+-r requirements.txt
+# training, evaluation, figures, tests, LLM arm
+scikit-learn==1.9.1
+scipy==1.18.1
+pandas==3.0.5
+matplotlib==3.11.2
+wordllama==0.4.0.post1
+safetensors
+pytest
+anthropic

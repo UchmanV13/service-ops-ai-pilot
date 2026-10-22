@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd web && npm ci && npm run build",
+  "outputDirectory": "web/dist",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "includeFiles": "{src/**,artifacts/pilot2/**,data/kb/**,outputs/pilot2/thresholds.json,web/public/**,api/app.py}"
+    }
+  },
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }]
+}

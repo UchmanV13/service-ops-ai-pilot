@@ -1,0 +1,10 @@
+# Alternative host for the API (long-running process instead of serverless).
+services:
+  - type: web
+    name: service-ops-ai-pilot
+    runtime: python
+    buildCommand: pip install -r requirements.txt && cd web && npm ci && npm run build
+    startCommand: gunicorn --chdir api app:app
+    envVars:
+      - key: SOPILOT_AUDIT_DB
+        value: /var/data/audit.db

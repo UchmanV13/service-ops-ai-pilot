@@ -52,9 +52,12 @@ def sentences(text: str):
 
 
 class Pipeline:
-    def __init__(self, scorer, retriever, model_version: str, critical=None):
+    def __init__(self, scorer, retriever, model_version: str, critical=None, sentence_scorer=None):
         self.scorer, self.retriever, self.model_version = scorer, retriever, model_version
         self.critical = critical  # optional CriticalScorer
+        # scorer for per-sentence multi-request detection (defaults to the main scorer; an LLM arm
+        # uses the cheap ensemble here so it is called once per ticket, not once per sentence)
+        self.sentence_scorer = sentence_scorer or scorer
 
     @classmethod
     def load(cls, art: Path | None = None, scorer_name: str | None = None, embedder=None):
@@ -79,7 +82,7 @@ class Pipeline:
         pbin = self.critical.predict(texts) if self.critical is not None else None
         sents = [sentences(redact_pii(t)[0]) for t in texts]
         flat = [s for ss in sents for s in ss]
-        sp = self.scorer.predict_proba(flat) if flat else np.zeros((0, len(INTENT_NAMES)))
+        sp = self.sentence_scorer.predict_proba(flat) if flat else np.zeros((0, len(INTENT_NAMES)))
         per = (time.perf_counter() - t0) * 1000 / max(1, len(texts))
         out, k = [], 0
         for i, t in enumerate(texts):
