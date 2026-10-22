@@ -1,0 +1,583 @@
+[
+ {
+  "id": "KB-SW-01",
+  "title": "Find and install drivers for Halden laptops and desktops",
+  "intents": [
+   "driver_update"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Drivers are published per model on the Halden Support Drivers page and through the Halden Update app.",
+  "steps": [
+   "Open Halden Update (preinstalled) and choose Check for updates; install everything marked Recommended.",
+   "Without the app: go to the Drivers page, enter the service tag or choose the model, filter by your OS.",
+   "Install chipset first, then graphics, audio, network, touchpad and camera, restarting when asked.",
+   "Unknown devices in Device Manager: right-click, Properties, Details, Hardware Ids; search that ID on the Drivers page."
+  ],
+  "escalate_if": "A driver install fails with a hardware error code or the device is missing from Device Manager entirely."
+ },
+ {
+  "id": "KB-SW-02",
+  "title": "Update BIOS / UEFI firmware safely",
+  "intents": [
+   "bios_update"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Firmware updates fix stability and security issues. Interrupting one can leave the device unbootable.",
+  "steps": [
+   "Connect the charger and keep it connected; battery should be above 30%.",
+   "Suspend BitLocker or device encryption before updating so you are not asked for the recovery key afterwards.",
+   "Run the update from Halden Update, or download the firmware file and run it from Windows.",
+   "If Windows will not start, copy the firmware file to a FAT32 USB stick, press F12 at boot and choose Firmware Update.",
+   "Do not power off during the update; the device may restart several times. Rollback to the previous version is available from the same F12 menu."
+  ],
+  "escalate_if": "The device does not start after a firmware update."
+ },
+ {
+  "id": "KB-SW-03",
+  "title": "Reset or reinstall the operating system",
+  "intents": [
+   "os_recovery"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Halden Recovery restores the factory image from the recovery partition or from a USB stick.",
+  "steps": [
+   "Back up files first; a reset can remove personal data.",
+   "From Windows: Settings, System, Recovery, Reset this PC.",
+   "If Windows will not start: press F11 at power-on to open Halden Recovery and choose Restore factory image.",
+   "No recovery partition: create a USB stick with the Halden Recovery Media tool on another computer (16 GB or larger) and boot from it with F12.",
+   "For boot loops or INACCESSIBLE_BOOT_DEVICE, run the built-in disk check from the F12 diagnostics menu before reinstalling."
+  ],
+  "escalate_if": "Diagnostics report a disk failure, or the customer reports missing or unreadable data."
+ },
+ {
+  "id": "KB-SW-04",
+  "title": "Wi-Fi or Bluetooth drops, slow, or missing",
+  "intents": [
+   "wifi_drops"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Most wireless problems are fixed by updating the wireless driver and changing power settings.",
+  "steps": [
+   "Install the latest wireless and Bluetooth drivers from Halden Update.",
+   "Device Manager, network adapter, Power Management: clear 'Allow the computer to turn off this device to save power'.",
+   "For 5 GHz networks not showing, set the adapter's Preferred Band to 5 GHz and confirm the router channel is supported.",
+   "Forget the network and reconnect; run the Network troubleshooter.",
+   "If the wireless option disappeared, run the F12 diagnostics wireless test."
+  ],
+  "escalate_if": "The diagnostics wireless test fails."
+ },
+ {
+  "id": "KB-SW-05",
+  "title": "Screen flicker, blinking or wrong resolution after an update",
+  "intents": [
+   "display_flicker"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Flicker after an update is usually a graphics driver or panel power-saving setting.",
+  "steps": [
+   "Reinstall the graphics driver from Halden Update (not the generic Windows driver).",
+   "Turn off Panel Self Refresh and adaptive brightness in the Halden Display app.",
+   "Set the refresh rate under Display settings, Advanced display.",
+   "Run the F12 built-in LCD self-test: if the flicker appears in the self-test, the panel needs service."
+  ],
+  "escalate_if": "The flicker appears in the built-in LCD self-test."
+ },
+ {
+  "id": "KB-SW-06",
+  "title": "Improve slow performance",
+  "intents": [
+   "slow_performance"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Slowness is usually background updates, startup apps, low disk space or a power mode setting.",
+  "steps": [
+   "Let pending updates finish and restart.",
+   "Task Manager, Startup apps: disable anything you do not need at startup.",
+   "Set the power mode to Balanced or Best performance; check the Halden Power app is not in Quiet mode.",
+   "Keep at least 15% of the drive free; run Storage Sense.",
+   "Run the F12 diagnostics; a failing drive can cause slowness."
+  ],
+  "escalate_if": "Diagnostics report a drive or memory error."
+ },
+ {
+  "id": "KB-HW-01",
+  "title": "Device will not power on: checks before service",
+  "intents": [
+   "no_power"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor"
+  ],
+  "summary": "Steps an agent asks for before approving a repair for a device that will not power on.",
+  "steps": [
+   "Laptop: disconnect everything, hold power 30 seconds, connect only the original charger, try again.",
+   "Note the charging LED pattern; three amber blinks indicate a battery fault, two indicate the power adapter.",
+   "Desktop: try a different outlet and power cable; check the PSU switch.",
+   "Monitor: try a different power cable and input, press the self-test button."
+  ],
+  "escalate_if": "Any sign of heat damage, swelling, burning smell or smoke: stop and escalate to Trust & Safety."
+ },
+ {
+  "id": "KB-HW-02",
+  "title": "Cracked or damaged screen",
+  "intents": [
+   "screen_damage"
+  ],
+  "products": [
+   "laptop",
+   "monitor"
+  ],
+  "summary": "Physical damage is not covered by the standard warranty; it may be covered by Accidental Damage Protection.",
+  "steps": [
+   "Stop using the device if glass fragments are loose.",
+   "Back up data through an external monitor if possible.",
+   "An agent checks coverage and arranges repair or a quote."
+  ],
+  "escalate_if": "Battery damage is visible or suspected."
+ },
+ {
+  "id": "KB-HW-03",
+  "title": "Keyboard keys or touchpad not working",
+  "intents": [
+   "keyboard_failure"
+  ],
+  "products": [
+   "laptop"
+  ],
+  "summary": "Check software causes before service.",
+  "steps": [
+   "Restart and test in the F12 diagnostics keyboard test.",
+   "If keys work in diagnostics, reinstall the keyboard and touchpad drivers.",
+   "If keys fail in diagnostics, an agent arranges a keyboard replacement."
+  ],
+  "escalate_if": "The keyboard or touchpad is being pushed up from below (possible battery swelling)."
+ },
+ {
+  "id": "KB-HW-04",
+  "title": "Fan noise and overheating",
+  "intents": [
+   "fan_overheating"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "server"
+  ],
+  "summary": "Check thermals and run the fan test before a part is dispatched.",
+  "steps": [
+   "Use the device on a hard surface; clean vents with compressed air.",
+   "Update BIOS and the Halden Power app.",
+   "Run the F12 diagnostics fan test and note any error code.",
+   "Servers: check the fan status in the management controller."
+  ],
+  "escalate_if": "Smoke, melting, burning smell, or a server fan failure on a production system."
+ },
+ {
+  "id": "KB-HW-05",
+  "title": "Dead and stuck pixel policy",
+  "intents": [
+   "dead_pixels"
+  ],
+  "products": [
+   "monitor",
+   "laptop"
+  ],
+  "summary": "Clarity monitors and Aero laptops are replaced under warranty when pixel defects exceed the policy thresholds.",
+  "steps": [
+   "Run the built-in self-test (monitor: hold the menu button 5 seconds; laptop: F12 LCD test) to confirm the pixel is not on the source.",
+   "Policy: replacement for any bright (always-on) pixel, or for 3 or more dark pixels, during the warranty period.",
+   "If your device meets the policy, reply with the service tag and a photo, and an agent will arrange the exchange."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-HW-06",
+  "title": "Dock or external displays not detected",
+  "intents": [
+   "dock_not_detected"
+  ],
+  "products": [
+   "dock"
+  ],
+  "summary": "Most Dock D3 problems are fixed by firmware and driver updates.",
+  "steps": [
+   "Update the dock firmware with the Halden Dock Updater, then the laptop BIOS and graphics driver.",
+   "Disconnect the dock from power for 30 seconds, then reconnect power before the laptop cable.",
+   "Use the USB-C cable supplied with the dock; check the port supports display output.",
+   "For two monitors, confirm the laptop supports multi-stream transport in the dock compatibility list."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-WA-01",
+  "title": "Check warranty status and coverage",
+  "intents": [
+   "warranty_status"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server",
+   "dock"
+  ],
+  "summary": "Coverage is looked up by service tag.",
+  "steps": [
+   "Provide the service tag (on the bottom label or in the BIOS).",
+   "The lookup returns the plan, end date, and whether service is onsite or mail-in."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-WA-02",
+  "title": "Extend or upgrade coverage",
+  "intents": [
+   "warranty_extension"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server"
+  ],
+  "summary": "Extensions are quoted by the renewals team.",
+  "steps": [
+   "Provide the service tag(s).",
+   "Renewals sends a quote; expired coverage may need an inspection first."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-WA-03",
+  "title": "Transfer ownership",
+  "intents": [
+   "ownership_transfer"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor"
+  ],
+  "summary": "Warranty follows the device; registration can be changed with proof of purchase or a transfer form.",
+  "steps": [
+   "Complete the ownership transfer form with the service tag.",
+   "An agent verifies and updates the registration."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-WA-04",
+  "title": "Accidental damage coverage",
+  "intents": [
+   "accidental_damage"
+  ],
+  "products": [
+   "laptop",
+   "monitor"
+  ],
+  "summary": "Drops, spills and electrical surges are covered only under Accidental Damage Protection.",
+  "steps": [
+   "Power off a wet device and do not charge it.",
+   "An agent checks whether ADP is active and how many claims remain."
+  ],
+  "escalate_if": "Liquid near the battery with heat or smell."
+ },
+ {
+  "id": "KB-PL-01",
+  "title": "Track a replacement part",
+  "intents": [
+   "part_order_status"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server",
+   "dock"
+  ],
+  "summary": "Part shipments are tracked by order number.",
+  "steps": [
+   "Provide the order number (ORD-########).",
+   "The lookup returns carrier, tracking number and estimated delivery."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-PL-02",
+  "title": "Wrong, damaged or missing part",
+  "intents": [
+   "wrong_part"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server"
+  ],
+  "summary": "An agent verifies the part number and reships.",
+  "steps": [
+   "Do not install the part.",
+   "Send photos of the part label and packaging."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-PL-03",
+  "title": "Return a defective part",
+  "intents": [
+   "return_label"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server",
+   "dock"
+  ],
+  "summary": "Defective parts must be returned within 10 days with the prepaid label.",
+  "steps": [
+   "Pack the old part in the replacement's packaging.",
+   "An agent issues or reissues the prepaid label."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-FS-01",
+  "title": "Book or change an onsite technician visit",
+  "intents": [
+   "schedule_onsite",
+   "reschedule_visit"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "server"
+  ],
+  "summary": "Approved onsite cases can be booked or moved with the self-scheduling link.",
+  "steps": [
+   "Provide the case number (CS-#######).",
+   "Use the scheduling link to pick or change a 4-hour window.",
+   "Changes are free until 6 pm the day before the visit."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-FS-02",
+  "title": "Missed technician visit",
+  "intents": [
+   "technician_no_show"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "server"
+  ],
+  "summary": "A dispatch coordinator investigates and rebooks with priority.",
+  "steps": [
+   "Provide the case number.",
+   "The coordinator contacts the field partner and offers the earliest slot."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-BR-01",
+  "title": "Refund status",
+  "intents": [
+   "refund_status"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "dock"
+  ],
+  "summary": "Refunds are issued within 5 business days of the return being received; banks take 3 to 10 more days.",
+  "steps": [
+   "Provide the order number.",
+   "The lookup returns the return-received date and refund date."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-BR-02",
+  "title": "Invoice copies",
+  "intents": [
+   "invoice_copy"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "server",
+   "dock"
+  ],
+  "summary": "Invoices can be re-sent to the email on the order.",
+  "steps": [
+   "Provide the order number.",
+   "Company name or VAT changes need an agent."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-BR-03",
+  "title": "Duplicate or incorrect charge",
+  "intents": [
+   "duplicate_charge"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "dock"
+  ],
+  "summary": "Billing reviews the payment record; pending authorizations often drop off in 3 to 5 days.",
+  "steps": [
+   "Provide the order number and the dates and amounts on the statement."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-BR-04",
+  "title": "Return a product",
+  "intents": [
+   "return_request"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "monitor",
+   "dock"
+  ],
+  "summary": "Products bought direct can be returned within 30 days in original condition.",
+  "steps": [
+   "Provide the order number.",
+   "An agent confirms eligibility and issues the return authorization."
+  ],
+  "escalate_if": ""
+ },
+ {
+  "id": "KB-EN-01",
+  "title": "Enterprise outage: severity 1 intake",
+  "intents": [
+   "enterprise_outage"
+  ],
+  "products": [
+   "server"
+  ],
+  "summary": "Business-wide outages go to the enterprise duty manager immediately; no scripted troubleshooting by email.",
+  "steps": [
+   "Page the duty manager.",
+   "Collect the service tags, error logs and contact number."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-EN-02",
+  "title": "Degraded RAID or failed disk",
+  "intents": [
+   "raid_degraded"
+  ],
+  "products": [
+   "server"
+  ],
+  "summary": "Degraded arrays risk data loss; a storage specialist owns the case.",
+  "steps": [
+   "Advise not to reboot or replace disks until the specialist reviews the controller log."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-EN-03",
+  "title": "Data loss",
+  "intents": [
+   "data_loss"
+  ],
+  "products": [
+   "laptop",
+   "desktop",
+   "server"
+  ],
+  "summary": "Stop using the drive; a data-recovery specialist owns the case.",
+  "steps": [
+   "Advise the customer to stop using the device to avoid overwriting data."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-TS-01",
+  "title": "Battery swelling, smoke or burning smell",
+  "intents": [
+   "battery_safety"
+  ],
+  "products": [
+   "laptop"
+  ],
+  "summary": "Safety incident. Trust & Safety contacts the customer the same day.",
+  "steps": [
+   "Tell the customer to stop using and unplug the device, keep it on a non-flammable surface away from people, and not to puncture or press the battery."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-TS-02",
+  "title": "Security incident or stolen device",
+  "intents": [
+   "security_incident"
+  ],
+  "products": [
+   "laptop",
+   "desktop"
+  ],
+  "summary": "Security team owns the case; may involve remote lock and account protection.",
+  "steps": [
+   "Do not ask for passwords. Record the service tag and when the incident happened."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-TS-03",
+  "title": "Legal or regulatory threat",
+  "intents": [
+   "legal_threat"
+  ],
+  "products": [],
+  "summary": "Customer relations and legal review. No commitments in writing by frontline staff.",
+  "steps": [
+   "Acknowledge receipt only."
+  ],
+  "escalate_if": "Always."
+ },
+ {
+  "id": "KB-TS-04",
+  "title": "Personal data requests",
+  "intents": [
+   "privacy_request"
+  ],
+  "products": [],
+  "summary": "Access, deletion and objection requests go to the Privacy Office, which has statutory deadlines.",
+  "steps": [
+   "Acknowledge receipt only; do not change or delete records from the support desk."
+  ],
+  "escalate_if": "Always."
+ }
+]
