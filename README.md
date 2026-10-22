@@ -27,8 +27,10 @@ ticket ─► redact PII ─► detect language, extract service tag / order / c
        ─► intent model (TF-IDF + embeddings, calibrated)
             critical score ≥ τ ───────────────────────────► ESCALATE
             instruction aimed at the system ──────────────► person reviews
-            two requests / look-alike of a never-automate intent ─► person reviews
+            two requests ─────────────────────────────────► person reviews
+            close look-alike of a never-automate intent ──► person reviews
             never-automated intent, or confidence < λ ────► person reviews, with draft + evidence
+            non-English (if the policy says so) ──────────► person reviews
             missing identifier ───────────────────────────► ask for it (automated)
             KB answer not in retrieval top 2 ─────────────► person reviews
             otherwise ─► KB reply / read-only lookup / scheduling link (sandbox)

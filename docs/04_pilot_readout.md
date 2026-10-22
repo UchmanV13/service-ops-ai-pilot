@@ -24,13 +24,13 @@ Two pre-registered pilots both came back **NO-GO**:
 
 ## What the pilots proved
 
-1. **Iteration worked where it was aimed.** On wording it never saw, the intent model went from 68.4% to 86.2% accuracy, routing from 77.6% to 88.9% (passing G5), multi-request detection from 57% to 96% recall, and paraphrase stability (the same case written six ways gets the same action) from 55% to 89%.
+1. **Iteration worked where it was aimed.** On wording it never saw, the intent model went from 68.4% to 86.2% accuracy, routing from 77.6% to 88.9% (passing G5), and paraphrase stability (the same case written six ways gets the same action) from 55% to 89%. Multi-request recall rose from 57% to 96%, but that figure is optimistic: all three secondary-request sentences in the Pilot 2 holdout use a cue word from the detector's published cue list.
 2. **Escalation, not automation, decides the economics.** To hold critical recall near 98%, the critical threshold falls to 0.03–0.04, and about half of all escalations are not critical. In Pilot 1, false escalations cost $972 per 1,000 tickets and two missed critical cases another $667, against $490 of automation savings. Pilot 2 breaks even only if a missed critical ticket costs less than about $24.
 3. **Hand-written rules overfit the data they were written from.** The safety rules caught 98% of critical tickets on dev and 78% (Pilot 1) and 66% (Pilot 2) on new phrasings. The injection patterns caught 33/33 Pilot 1 injections and 15/32 new ones. The learned critical score, not the rules, carries recall (removing it drops recall to 66–78%).
 4. **A finite-sample guarantee is only as good as its calibration set.** Pilot 1's threshold kept automated error at 1.1% on validation and 5.8% on test. Tickets that share a phrasing are correlated, so 4 phrasings per intent behaved like a much smaller sample than 1,200 tickets suggests. Pilot 2 tightened the target (3%) and used a larger calibration set, and no threshold passed.
 5. **A dedicated critical classifier did not help.** By the pre-registered choice rule (out-of-fold average precision), the binary model (0.950) lost to summing the intent model's critical probabilities (0.974).
 6. **The scorer chosen on training data was not the best on the holdout.** The ensemble won on out-of-fold AURC; on Pilot 2's holdout, TF-IDF alone routed better (93.5% vs 88.9%) with fewer false escalations (76% precision) but lower critical recall (95.6%). Choosing on the holdout would have been cheating, so the ensemble stands.
-7. **Safety held where it was designed in.** No PII leaked after redaction (0 of 820 tickets with contact details). Injections appended to every automated Pilot 1 ticket stopped automation in 154 of 154. Ticket text cannot trigger an action, because actions are an allow-list of read-only lookups, KB replies and scheduling links.
+7. **Safety held where it was designed in.** No email address or card number survived redaction (0 of 820 tickets with contact details); phone redaction missed two Pilot 1 tickets where typo noise had broken the number's format. Injections appended to every automated Pilot 1 ticket stopped automation in 154 of 154. Ticket text cannot trigger an action, because actions are an allow-list of read-only lookups, KB replies and scheduling links.
 
 ## Why the decision is not "this cannot work"
 
@@ -46,7 +46,10 @@ On Pilot 2's holdout, a 0.95 threshold would have automated 32.5% of tickets at 
 
 ## Known issues
 
-- **Label artifact in Pilot 1 data.** Typo noise corrupted identifiers in 7 test tickets and 32 shift tickets, so their gold label says the identifier is present when the text no longer contains a valid one. One of Pilot 1's 9 automated errors is this artifact; correcting it moves automated accuracy from 94.2% to 94.8% and does not change the decision. Pilot 2 data protects identifiers.
+- **German safety cases.** On the Pilot 2 holdout, 3 of the 4 missed critical tickets were German (German critical recall 2 of 5). Non-English critical handling is the weakest part of the system and a priority for Pilot 3.
+- **Pilot 1 shift set reuses phrasings.** It draws English phrasings from all 24 per intent, including dev, val and test, so Pilot 1's G6 result is partly in-sample. Pilot 2's `shift_v2` uses only unseen phrasings.
+
+- **Label artifact in Pilot 1 data.** Typo noise corrupted identifiers in 7 test tickets and 32 shift tickets (the Pilot 2 charter mentions the one that caused an automated error), so their gold label says the identifier is present when the text no longer contains a valid one. One of Pilot 1's 9 automated errors is this artifact; correcting it moves automated accuracy from 94.2% to 94.8% and does not change the decision. Pilot 2 data protects identifiers.
 - **Author overlap.** One author wrote the templates, the labeling rules and the safety rules. The hand-written tickets and the batch-3 holdout reduce, but do not remove, this optimism.
 - **Synthetic economics.** All cost inputs are placeholders. The model charges the system for every missed critical ticket and assumes the all-human desk misses none.
 

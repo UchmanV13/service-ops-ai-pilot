@@ -32,11 +32,11 @@ def net_value(outs, a: dict) -> dict:
                 c = a["spot_check_share_of_automated"] * a["spot_check_minutes"] * rate
                 parts["spot_checks"] -= c
                 cost_usd += c
-            elif o["inappropriate"]:
+            elif o["inappropriate"] and not o["critical"]:  # automated critical tickets are charged below as missed
                 c = a["inappropriate_automation_cost"]["rework_minutes"] * rate + a["inappropriate_automation_cost"]["goodwill_usd"]
                 parts["inappropriate_automation"] -= c
                 cost_usd += c
-            else:
+            elif not o["critical"]:
                 c = a["wrong_automation_cost"]["rework_minutes"] * rate + a["wrong_automation_cost"]["goodwill_usd"]
                 parts["wrong_automation"] -= c
                 cost_usd += c

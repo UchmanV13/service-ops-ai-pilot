@@ -14,7 +14,7 @@ export function PolicyToggle({ policy, setPolicy }: { policy: PolicyName; setPol
       </div>
       <p className="small muted">
         {policy === "frozen"
-          ? `The policy certified by the Pilot 2 protocol: automation threshold ${pol.frozen.auto_threshold > 1 ? "none (automation off)" : pol.frozen.auto_threshold}, critical threshold ${pol.frozen.critical_threshold}.`
+          ? `The policy frozen by the Pilot 2 protocol: ${pol.frozen.auto_threshold > 1 ? "no automation threshold was certified, so automation is off" : `automation threshold ${pol.frozen.auto_threshold}`}; critical threshold ${pol.frozen.critical_threshold}.`
           : "Same system with a 0.95 automation threshold. Not certified: shown so you can see what automation would do."}
       </p>
     </div>

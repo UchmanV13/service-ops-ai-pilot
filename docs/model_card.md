@@ -10,7 +10,7 @@
 
 **Known limitations.**
 - Learned from 18 phrasings per intent; accuracy is still rising with more variety (learning curve: 68% at 3, 87% at 18).
-- Non-English intents are thinly covered (German intent accuracy 77.5% on the holdout).
+- Non-English intents are thinly covered: German intent accuracy 77.5% on the holdout, and German critical recall 2 of 5 (3 of the 4 missed critical tickets were German).
 - Confuses near-neighbors: schedule vs. reschedule, warranty status vs. extension or transfer, return label vs. return request.
 - The labels encode one author's guide; there is no human agreement measurement yet.
 - Confidence is calibrated on synthetic phrasing families; it is not evidence of calibration on real traffic.

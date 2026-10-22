@@ -28,6 +28,10 @@ Written after Pilot 1 was scored (NO-GO) and **before** the Pilot 2 holdout data
 - `holdout_v2` (1,500 tickets), `shift_v2` (800, new products, chat style, typos, more non-English), `paraphrase_v2` (150 cases × 6 phrasings), and the unchanged 60 hand-written tickets.
 - Scored **once**, after thresholds are frozen and committed.
 
+## Change log
+
+1. **Reporting rule added after the holdout was scored.** When nothing is automated, G2 (inappropriate automation) and G3 (automated accuracy) are reported as "not applicable" and do not count as failures. The first scoring script had marked G2 as failed because its upper bound was undefined. The decision is unchanged either way, because G1 failed.
+
 ## Decision rule
 
 Same as Pilot 1. If Pilot 2 is GO or NARROW GO, the recommendation is a supervised production pilot with the monitoring plan in the runbook. If it is NO-GO, automation stays off and the system is assessed as a routing and flagging assistant only.
