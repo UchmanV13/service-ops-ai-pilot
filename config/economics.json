@@ -1,0 +1,32 @@
+{
+  "_note": "ILLUSTRATIVE ASSUMPTIONS for a fictional company, fixed before the test split was scored. Replace with a time study and finance inputs before any real decision.",
+  "base": {
+    "analyst_cost_per_hour": 45.0,
+    "specialist_cost_per_hour": 70.0,
+    "manual_minutes": {
+      "triage_and_route": 2.0,
+      "AUTO_REPLY_KB": 6.0,
+      "AUTO_LOOKUP": 4.0,
+      "AUTO_SCHEDULE_LINK": 3.0,
+      "REQUEST_INFO": 2.0
+    },
+    "spot_check_share_of_automated": 0.10,
+    "spot_check_minutes": 1.0,
+    "assisted_triage_minutes_saved_when_queue_correct": 1.0,
+    "misroute_rework_minutes": 3.0,
+    "false_escalation_specialist_minutes": 5.0,
+    "wrong_automation_cost": {"rework_minutes": 15.0, "goodwill_usd": 10.0},
+    "inappropriate_automation_cost": {"rework_minutes": 20.0, "goodwill_usd": 25.0},
+    "missed_critical_cost_usd": 500.0,
+    "monthly_tickets": 10000,
+    "monthly_maintenance_hours": 8.0,
+    "monthly_infra_usd": 200.0
+  },
+  "pessimistic_multipliers": {
+    "manual_minutes": 0.6,
+    "assisted_triage_minutes_saved_when_queue_correct": 0.5,
+    "error_costs": 2.0,
+    "missed_critical_cost_usd": 4.0,
+    "maintenance": 2.0
+  }
+}
