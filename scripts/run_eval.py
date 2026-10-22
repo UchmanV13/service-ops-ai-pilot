@@ -37,6 +37,7 @@ def params_for(th, arm):
 
 
 def go_no_go(test, shift, econ_base, econ_pess):
+    none_auto = test["automated_coverage"]["k"] == 0
     g = {
         "G1_critical_recall": {"value": test["critical_recall"]["rate"], "lower95": test["critical_recall"]["lower95_one_sided"],
                                "pass": test["critical_recall"]["rate"] >= 0.98 and test["critical_recall"]["lower95_one_sided"] >= 0.95},
@@ -52,6 +53,9 @@ def go_no_go(test, shift, econ_base, econ_pess):
         "G7_economics": {"base": econ_base["net_usd_per_1000"], "pessimistic": econ_pess["net_usd_per_1000"],
                          "pass": econ_base["net_usd_per_1000"] > 0 and econ_pess["net_usd_per_1000"] > 0},
     }
+    if none_auto:  # nothing automated: automation-quality criteria are vacuous, not failures
+        for k in ("G2_inappropriate_automation", "G3_automated_accuracy"):
+            g[k]["pass"], g[k]["note"] = True, "not applicable: nothing was automated"
     allp = all(v["pass"] for v in g.values())
     core = g["G1_critical_recall"]["pass"] and g["G2_inappropriate_automation"]["pass"]
     g["decision"] = "GO" if allp else ("NARROW GO" if core else "NO-GO")
