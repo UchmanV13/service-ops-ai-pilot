@@ -54,6 +54,7 @@ every decision ─► append-only audit log ─► reviewer approve / edit / rej
 
 ```bash
 pip install -r requirements-dev.txt
+python scripts/export_embedder.py   # optional locally; required before deploying
 cd web && npm ci && npm run build && cd ..
 python api/app.py          # http://localhost:5000
 pytest -q                  # 21 tests

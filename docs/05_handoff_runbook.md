@@ -33,7 +33,7 @@ Everything is seeded. The git history records the order: charter, data, models, 
 
 ## Deploy
 
-**Vercel (frontend + serverless API).** From the repo root: `npx vercel deploy`. `vercel.json` builds `web/` and serves `api/index.py` as a Python function. `.vercelignore` keeps the bundle to the Pilot 2 artifacts (about 20 MB, mostly the 16 MB embedding matrix). The audit log lives in `/tmp` on serverless and resets on cold starts; use Render or a managed database for a durable log.
+**Vercel (frontend + serverless API).** First run `python scripts/export_embedder.py --pilot pilot2` (writes the 16 MB `artifacts/pilot2/embedder.npz`, kept out of git, so the API needs only numpy and tokenizers). Then from the repo root: `npx vercel deploy`. `vercel.json` builds `web/` and serves `api/index.py` as a Python function. `.vercelignore` keeps the bundle to the Pilot 2 artifacts (about 20 MB, mostly the 16 MB embedding matrix). The audit log lives in `/tmp` on serverless and resets on cold starts; use Render or a managed database for a durable log.
 
 **Render (long-running API).** `render.yaml` runs `gunicorn` with a persistent disk for `audit.db`.
 
