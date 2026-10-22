@@ -89,4 +89,12 @@ Each arm is wrapped in the same guards, policy and threshold protocol, so differ
 
 ## Change log
 
-- *(none yet)*
+None of these changes moves a go/no-go threshold. The test split was not scored or read before any of them.
+
+1. **Phrasing bank doubled (dev only informed it).** The first data version had 12 phrasings per intent (6 for training). A first training run, and one exploratory look at validation intent accuracy (about 63%), showed the learned models were in a cold-start regime: six example sentences per intent. The bank was expanded to 24 phrasings per intent (14 dev / 4 val / 6 test) and every split was regenerated. The 6-phrasing condition is kept as a learning-curve analysis.
+2. **Scorer choice and calibration moved off val.** Both now use template-grouped out-of-fold predictions on dev, so val is used only for thresholds and its guarantee is not spent on model selection. This tightens the protocol.
+3. **First threshold run on val (v1) exposed two problems, and val was re-sampled.**
+   - *Start rule bug.* The Learn-then-Test search skipped thresholds with fewer than 50 automated tickets, but with α = 4% and δ = 5% even zero errors cannot reject below 74 tickets, so the fixed sequence stopped at once. The start rule is now the label-free minimum n = ⌈log δ / log(1 − α)⌉ = 74.
+   - *Weak hard rules.* The guard rules caught 64% of critical val tickets because they were written against the first phrasing batch. Rules were extended using **dev** tickets they missed (dev recall 265/270, zero false positives on dev). Because the rules are now fitted to dev phrasings, their recall on dev is optimistic by construction.
+   - Because val v1 had been seen in aggregate, the thresholds were re-chosen on a **freshly sampled val (v2)** from the same validation phrasing families with a new seed. Test was never touched.
+4. **Pre-set non-English rule.** After λ is chosen, if automated non-English tickets on val have an error rate above α, the policy sends all non-English tickets to people. Decided before scoring test.

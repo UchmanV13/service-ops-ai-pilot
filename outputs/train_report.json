@@ -1,0 +1,64 @@
+{
+ "n_dev": 2400,
+ "cv": "GroupKFold(5) by template family",
+ "tfidf": {
+  "C=2.0": {
+   "oof_nll_calibrated": 1.1488,
+   "T": 0.48,
+   "oof_acc": 0.6921
+  },
+  "C=8.0": {
+   "oof_nll_calibrated": 1.1122,
+   "T": 0.584,
+   "oof_acc": 0.7071
+  },
+  "C=32.0": {
+   "oof_nll_calibrated": 1.1014,
+   "T": 0.69,
+   "oof_acc": 0.7121
+  }
+ },
+ "embed": {
+  "C=3.0": {
+   "oof_nll_calibrated": 1.1242,
+   "T": 0.58,
+   "oof_acc": 0.6937
+  },
+  "C=30.0": {
+   "oof_nll_calibrated": 1.0252,
+   "T": 0.854,
+   "oof_acc": 0.7233
+  },
+  "C=300.0": {
+   "oof_nll_calibrated": 1.0402,
+   "T": 1.228,
+   "oof_acc": 0.7267
+  }
+ },
+ "scorer_choice": {
+  "by": "lowest AURC on grouped OOF dev predictions",
+  "results": {
+   "rules": {
+    "oof_acc": 0.5579,
+    "aurc": 0.20993,
+    "oof_nll": 1.6076
+   },
+   "tfidf": {
+    "oof_acc": 0.7121,
+    "aurc": 0.09597,
+    "oof_nll": 1.1014
+   },
+   "embed": {
+    "oof_acc": 0.7233,
+    "aurc": 0.09312,
+    "oof_nll": 1.0252
+   },
+   "ensemble": {
+    "oof_acc": 0.7429,
+    "aurc": 0.07665,
+    "oof_nll": 0.947
+   }
+  },
+  "chosen": "ensemble"
+ }
+}

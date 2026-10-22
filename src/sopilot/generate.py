@@ -44,12 +44,12 @@ SECONDARY_SEVERITY = {k: INTENTS[k].priority for k in SECONDARY}
 
 
 def core_assignment(rng: random.Random) -> dict:
-    """Assign each English core phrasing to dev (6), val (3) or test (3)."""
+    """Assign each English core phrasing (24 per intent) to dev (14), val (4) or test (6)."""
     out = {}
     for intent, cores in CORES.items():
         idx = list(range(len(cores)))
         rng.shuffle(idx)
-        out[intent] = {"dev": idx[:6], "val": idx[6:9], "test": idx[9:12]}
+        out[intent] = {"dev": idx[:14], "val": idx[14:18], "test": idx[18:24]}
     return out
 
 
@@ -111,7 +111,7 @@ def render(rng, split, intent_name, *, lang, assign, shift):
                 core = SHIFT_CORES[intent_name][ci]
                 family = f"{intent_name}:en:shift{ci}"
             else:
-                ci = rng.randrange(12)
+                ci = rng.randrange(len(CORES[intent_name]))
                 core = CORES[intent_name][ci]
                 family = f"{intent_name}:en:{ci}"
         else:
@@ -259,7 +259,8 @@ def main(out_dir: str = "data/tickets") -> dict:
     out.mkdir(parents=True, exist_ok=True)
     summary = {}
     for split, size in SPLIT_SIZES.items():
-        srng = random.Random(f"{SEED}-{split}")
+        # val was re-sampled once (v2) after the first protocol run; see the charter change log
+        srng = random.Random(f"{SEED}-{split}" + ("-v2" if split == "val" else ""))
         rows = [build_ticket(srng, split, n, assign, weights) for n in range(size)]
         with open(out / f"{split}.jsonl", "w", encoding="utf-8") as fh:
             for r in rows:
