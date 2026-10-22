@@ -1,7 +1,7 @@
-"""Claude arm under the Pilot 2 protocol (needs ANTHROPIC_API_KEY; not run in the build session).
+"""Claude arm under the Pilot 3 protocol, docs/02c_pilot3_charter.md (needs ANTHROPIC_API_KEY).
 
 Same guards, policy, threshold protocol and go/no-go criteria as the other arms:
-thresholds on the calibration split (Pilot 1 test), scored once on holdout_v2.
+thresholds on the calibration split (holdout_v2), scored once on holdout_v3.
 Model names and prices change; pass the ones you use, from the provider's docs.
 
     export ANTHROPIC_API_KEY=...
@@ -37,7 +37,7 @@ def main():
     ap.add_argument("--mode", choices=["vote", "verbalized"], default="vote")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
-    cfg = json.loads((ROOT / "config" / "pilots.json").read_text())["pilot2"]
+    cfg = json.loads((ROOT / "config" / "pilots.json").read_text())["pilot3"]
     base_pipe = Pipeline.load(art=ROOT / "artifacts" / "pilot2")
     triage = ClaudeTriage(a.model, a.price_in, a.price_out, base_pipe.retriever, samples=a.samples)
     pipe = Pipeline(LLMScorer(triage, a.mode), base_pipe.retriever, f"claude-{a.model}-{a.mode}",
@@ -45,6 +45,8 @@ def main():
     out = ROOT / "outputs" / "pilot3_llm"
     out.mkdir(parents=True, exist_ok=True)
 
+    if not (ROOT / "data" / "tickets" / f"{cfg['holdout']}.jsonl").exists():
+        sys.exit(f"{cfg['holdout']} not found: generate and commit it before running (see the Pilot 3 charter).")
     cal = load(cfg["calibrate"])
     hold = load(cfg["holdout"])
     if a.limit:
