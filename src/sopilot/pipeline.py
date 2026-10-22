@@ -184,6 +184,9 @@ def decide(ev, params: Params, retriever=None, model_version: str = ""):
         elif sib is not None:
             action = "HUMAN_REVIEW"
             reasons.append(f"Close to {sib[0].replace('_', ' ')} ({sib[1]:.0%}), which is never automated")
+        elif params.auto_threshold > 1:
+            action = "HUMAN_REVIEW"
+            reasons.append(f"Automation is off under this policy (no threshold was certified); confidence {conf:.0%}, routed to {it.queue.replace('_', ' ')}")
         elif conf < params.auto_threshold:
             action = "HUMAN_REVIEW"
             reasons.append(f"Confidence {conf:.0%} is below the automation threshold {params.auto_threshold:.0%}")
