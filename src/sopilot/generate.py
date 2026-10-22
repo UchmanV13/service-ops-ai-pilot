@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import string
 from pathlib import Path
 
@@ -65,10 +66,18 @@ def make_id(kind: str, rng: random.Random, shift: bool = False) -> str:
     return f"CS-{d}" if not (shift and rng.random() < 0.3) else f"case #{d}"
 
 
-def typo(text: str, rng: random.Random, rate: float) -> str:
+_ID_LIKE = re.compile(r"\d|^(?:hdn|ord|cs-)", re.IGNORECASE)
+
+
+def typo(text: str, rng: random.Random, rate: float, protect_ids: bool = False) -> str:
+    """Random swaps, drops and duplications. protect_ids=True (Pilot 2 data) never
+    touches tokens that contain digits or look like identifiers."""
     words = text.split(" ")
     out = []
     for w in words:
+        if protect_ids and _ID_LIKE.search(w):
+            out.append(w)
+            continue
         if len(w) > 3 and rng.random() < rate:
             i = rng.randrange(len(w) - 1)
             op = rng.choice(("swap", "drop", "dup"))

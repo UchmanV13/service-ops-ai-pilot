@@ -1,0 +1,14 @@
+{
+  "pilot1": {
+    "train": ["dev"], "calibrate": "val", "holdout": "test",
+    "extra": ["shift", "handwritten"], "paraphrase": "paraphrase",
+    "alpha": 0.04, "delta": 0.05,
+    "params": {"multi_mode": "v1", "multi_threshold": 0.7, "sibling_guard": null, "critical_signal": "intent_sum"}
+  },
+  "pilot2": {
+    "train": ["dev", "val"], "calibrate": "test", "holdout": "holdout_v2",
+    "extra": ["shift_v2", "handwritten"], "paraphrase": "paraphrase_v2",
+    "alpha": 0.03, "delta": 0.05,
+    "params": {"multi_mode": "cue", "multi_threshold": 0.85, "sibling_guard": 0.10, "critical_signal": "chosen_on_oof"}
+  }
+}
