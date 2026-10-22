@@ -1,0 +1,32 @@
+[
+ {
+  "phrasings_per_intent": 3,
+  "n_train": 1043,
+  "holdout_intent_accuracy": 0.6753,
+  "holdout_aurc": 0.1471
+ },
+ {
+  "phrasings_per_intent": 6,
+  "n_train": 1638,
+  "holdout_intent_accuracy": 0.7693,
+  "holdout_aurc": 0.0895
+ },
+ {
+  "phrasings_per_intent": 10,
+  "n_train": 2286,
+  "holdout_intent_accuracy": 0.8193,
+  "holdout_aurc": 0.0556
+ },
+ {
+  "phrasings_per_intent": 14,
+  "n_train": 2885,
+  "holdout_intent_accuracy": 0.8413,
+  "holdout_aurc": 0.0417
+ },
+ {
+  "phrasings_per_intent": 18,
+  "n_train": 3430,
+  "holdout_intent_accuracy": 0.8687,
+  "holdout_aurc": 0.0354
+ }
+]
